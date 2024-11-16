@@ -23,7 +23,7 @@ pkcs11.load(PKCS11_LIB_PATH)
 # Open session and login
 slot = pkcs11.getSlotList(tokenPresent=True)[0]
 session = pkcs11.openSession(slot)
-session.login("12345678")  # Replace with your token PIN
+session.login("0")  # Replace with your token PIN
 
 certs = session.findObjects([(PyKCS11.LowLevel.CKA_CLASS, PyKCS11.LowLevel.CKO_CERTIFICATE)])
 if not certs:
@@ -38,16 +38,15 @@ if not priv_keys:
 priv_key = priv_keys[0]
 
 # Perform raw RSA signing
-signature = bytes(session.sign(priv_key, digest, PyKCS11.MechanismRSAPKCS1))
+signature = bytes(session.sign(priv_key, data, PyKCS11.Mechanism(PyKCS11.CKM_SHA256_RSA_PKCS)))
 
 pub_keys = session.findObjects([(PyKCS11.LowLevel.CKA_CLASS, PyKCS11.LowLevel.CKO_PUBLIC_KEY)])
 if not pub_keys:
     raise ValueError("No public found on the DSC token")
 pub_key = pub_keys[0]
 
-result=session.verify(pub_key,digest,signature,PyKCS11.MechanismRSAPKCS1)
+result=session.verify(pub_key,data,signature,PyKCS11.Mechanism(PyKCS11.CKM_SHA256_RSA_PKCS))
 
-print("Digest",digest.hex())
 print("Certificate: ", cert_der.hex())
 print("Signature (hex): ", signature.hex())
 print("Verified",result)
