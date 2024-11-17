@@ -34,7 +34,7 @@ def register_token(tokens, nonce):
             "certificate": tokens.get("certficate"),
             "nonce": nonce
         }
-        response = requests.post(f"{BASE_URL}/register_token", json=payload)
+        response = requests.post(f"{BASE_URL}/register-token", json=payload)
         response.raise_for_status()
         
         # Extract the response JSON containing the signature and timestamp
@@ -57,27 +57,26 @@ def register_token(tokens, nonce):
 
     try:
         # Convert hex-encoded DER public key to bytes and load it
-        public_key_bytes = bytes.fromhex(public_key_hex)
-        public_key = serialization.load_der_public_key(public_key_bytes, backend=default_backend())
+        public_key_der = binascii.unhexlify(public_key_hex)
+        public_key = serialization.load_der_public_key(public_key_der, backend=default_backend())
     except ValueError as e:
         print(f"Error loading public key: {e}")
         return False
 
     # Recreate the combined data that was signed (nonce + owner name + timestamp)
     owner_name = tokens.get("owner_name")
-    combined_data = nonce + owner_name + timestamp
-    hash_value = sha256(combined_data.encode()).digest()
+    combined_data = (nonce + owner_name + timestamp).encode('utf-8')
     
     # Decode the received signature from hex
-    signature = bytes.fromhex(signature_hex)
+    signature = binascii.unhexlify(signature_hex)
     
     try:
         # Verify the signature using RSA-PKCS1 v1.5 padding with SHA-256
         public_key.verify(
             signature,
-            hash_value,
-            None,
-            hashes.SHA256()
+            combined_data,  # Hash of the data
+            padding=padding.PKCS1v15(),  # PKCS#1 v1.5 padding
+            algorithm=hashes.SHA256()  # Explicitly specify the hash algorithm
         )
         print("Signature verified successfully.")
         return True
@@ -113,7 +112,7 @@ def main():
 
     # Display the response from /register_token
     if result:
-        print("\nRegistration Result:")
+        print("Registration successful")
     else:
         print("Registration failed.")
 
