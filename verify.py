@@ -1,3 +1,4 @@
+import hashlib
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
@@ -10,14 +11,14 @@ PUBLIC_KEY_DER_HEX = (
 )
 
 # Data to verify
-DATA = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+DATA = "Sweet! This is a test message to verify the signature."
 
 # Signature in hexadecimal format
 SIGNATURE_HEX = (
-    "1D0A09DB6A9FAC480A3B8464FD9F813435E59C392601A38C379B335ABC5D87447E5835ED0B67818052C2E9FCEE0EA477E51C95FC8205AC6E3AC8D1FC5CB66B832BAB8FF7786AB98C2D00CCCFAC2E2C6DE7675AD197B78DB69C1F354B83CFC10EF0D8EA85CA5724672C747D4E3B24A254F9ACD5976C785A0E4524F798A3B6E8DBB24301D165EC1E909FBBE7120B22361216E691D19211250ECC4CD3C4040FB2F8C3FA92A5F6CA7B9CAFB5E8CE7A4007A16C3AA78E4EEB9295E659765CD655A065F894D599132FA9C9B591340FC29C4EF34D85BF6F4375AFE2928A480640D902704B729BF770976294670763AFC8CA609F2668CDE696B034759652F7A7626E05A7"
+    "7799115A68FA8E11FC346CF60227E2BF391532F5BA380AA26ADF5D1E26E3C67A65D75F09117D3A2ED90BBDB0E0AF944D8A50D88E4478FFDCA3E98136ACC38CF55A1E25D827220621C39EE7219C69170635B9D90BFF20ADF704FE2FBAD165520C54A80B846287429461D4AD69B0F3A9537F94F68A5F47AEDEA67CDAE921788E1DBD2C2E6440CE61C0E9ABB1AE6099EA176B19BEBB109342F8547854EB2773B677E2F42658F1D5A2CB3FD873C0AA2BC021DBDE327B7ACAFA33EA3AAFFCB5079F011788595CAC5EAF8C2614A64CAECAD0171B9EE85C5B36C34A35B3DCCA1ACD1328F073DB86B60E4C55A9FE37319AC09F3FE5F9956ECCE345212494E85314377E68"
 )
 
-TS = "2025-06-29T11:15:43.9496537Z"
+TS = "2025-06-29T11:25:05.0960217Z"
 
 
 def load_public_key_from_der_hex(der_hex):
@@ -64,13 +65,34 @@ def verify_signature(public_key, signature, digest_hex, timestamp):
         print(f"Error: {e}")
         return False
 
+def create_sha512_digest(components):
+    """
+    Create a SHA-256 digest from a list of components.
+    """
+    try:
+        if not components:
+            raise ValueError("Empty digest component")
+        
+        if not isinstance(components, list):
+            raise TypeError("Components must be a list.")
+        
+        combined_data = '|'.join(components).encode('utf-8')
+        
+        hash_object = hashlib.sha512(combined_data)
+        digest = hash_object.hexdigest()
+        return digest
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
 
 # Main execution
 if __name__ == "__main__":
+    digest = create_sha512_digest([DATA])
+    print(f"Digest: {digest}")
     status=verify_signature(
         PUBLIC_KEY_DER_HEX,
         SIGNATURE_HEX,
-        DATA,
+        digest,
         TS
     )
     if status:
