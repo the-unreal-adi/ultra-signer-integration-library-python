@@ -10,12 +10,14 @@ PUBLIC_KEY_DER_HEX = (
 )
 
 # Data to verify
-data = b"ilovepython"
+DATA = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 # Signature in hexadecimal format
 SIGNATURE_HEX = (
-    "6d9f3e29c4e7ed9925dfd614dd66c717322945d9355d9631b1594d41f15cb31c645aa5fd8f667258fdca015873a983c1311b2e07c4fcab1cd3c8774b2883b71506cf76bf07e8bd3a7765661b46313a58eaf3d73ea1b40270337d0652bd1327a0d93541621924f117804143c8a93d5bc07b66ec9d134cbdbb9cc1f4b310f8b4bfc9ba0eb9356c0d2fbbb8872358eeed90338c2d72db94e9b2b4419beb51c74aa6cd5bffa607c30616df8a4ab096cf5015fb7bf72fa5d59b00b587e848ed38bcaee2c5183aa68a6f1cd60eaa276cb221c7746fa17fd5ee74f022555a3a2347dbccbd75d463c340d6144b2c2894e6d79f5da6df2c99a8ad0b18a27db32b16067c0d"
+    "5E3497ED575550967A570EAAE1E31B421A0D94907FEC9187E88672E5B4F32E2DCCF065448F90D73844BB8C5545DA65A6FDDD41D44A182C5A02F62CE74391C502BAC96A6D1E2C94B27BB0FF89FDECF767E6CCDE61534D2BFF65703595B156AAC27A68330BCE3E129BC16B6D9D9024735D69B13BF91A251CC7BB231F942F6A2F584DDC8FEA861916956406F55F6B89E738B5BC8168391787C0D8040283A34EE59D9430BECA04BCCF95D25C6F65C316E7061277579FF14BB04EE32B4C1317D06B946F23DEAF4695B70ACD631485857AC876CA4A73D0F8DECB0BDD1D73862BF3D06E176E8BB0C2CC8C34FE4B1E494ACFD28AC497B3AFC032BAF55AA92887E22B18D8"
 )
+
+TS = "2025-06-29T09:54:09.5882460Z"
 
 
 def load_public_key_from_der_hex(der_hex):
@@ -26,39 +28,52 @@ def load_public_key_from_der_hex(der_hex):
     return serialization.load_der_public_key(public_key_der, backend=default_backend())
 
 
-def verify_raw_rsa_signature(public_key, data, signature):
+def verify_signature(public_key, signature, digest_hex, timestamp):
     """
-    Verify an RSA signature with no padding (raw RSA operation).
+    Verify a digital signature using RSA-PKCS#1 v1.5 and SHA-256.
     """
     try:
-        # Compute the hash of the original data
-        hash_obj = hashes.Hash(hashes.SHA256(), backend=default_backend())
-        hash_obj.update(data)
-        digest = hash_obj.finalize()
+        if not all([public_key, signature, digest_hex, timestamp]):
+            raise ValueError("Insufficient verification data")
+    
+        try:
+            # Convert hex-encoded DER public key to bytes and load it
+            public_key_der = binascii.unhexlify(public_key)
+            public_key_final = serialization.load_der_public_key(public_key_der, backend=default_backend())
+        except ValueError as e:
+            raise
 
-        # Log the hash (digest) and signature
-        print("Hash (digest):", digest.hex())
-        print("Signature (decoded):", signature.hex())
+        # Recreate the combined data that was signed
+        combined_data = '|'.join([digest_hex, timestamp]).encode('utf-8')
 
-        # Perform raw RSA verification
-        public_key.verify(
-            signature,
-            data,  # Hash of the data
-            padding=padding.PKCS1v15(),  # PKCS#1 v1.5 padding
-            algorithm=hashes.SHA256()  # Explicitly specify the hash algorithm
-        )
-        print("Signature is valid.")
+        # Decode the received signature from hex
+        signature_final = binascii.unhexlify(signature)
+
+        try:
+            # Verify the signature using RSA-PKCS1 v1.5 padding with SHA-256
+            public_key_final.verify(
+                signature_final,
+                combined_data,  # Hash of the data
+                padding=padding.PKCS1v15(),  # PKCS#1 v1.5 padding
+                algorithm=hashes.SHA256()  # Explicitly specify the hash algorithm
+            )  
+            return True
+        except Exception as e:
+            raise Exception("Signature verification failed.") 
     except Exception as e:
-        print(f"Signature verification failed: {e}")
+        print(f"Error: {e}")
+        return False
 
 
 # Main execution
 if __name__ == "__main__":
-    # Load the public key from DER hexadecimal
-    public_key = load_public_key_from_der_hex(PUBLIC_KEY_DER_HEX)
-
-    # Decode the signature from hex
-    signature = binascii.unhexlify(SIGNATURE_HEX)
-
-    # Verify the signature
-    verify_raw_rsa_signature(public_key, data, signature)
+    status=verify_signature(
+        PUBLIC_KEY_DER_HEX,
+        SIGNATURE_HEX,
+        DATA,
+        TS
+    )
+    if status:
+        print("Signature is valid.")
+    else:
+        print("Signature is invalid.")
