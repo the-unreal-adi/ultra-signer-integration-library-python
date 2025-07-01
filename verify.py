@@ -56,7 +56,7 @@ def verify_signature(public_key, signature, digest_hex, timestamp):
                 signature_final,
                 combined_data,  # Hash of the data
                 padding=padding.PKCS1v15(),  # PKCS#1 v1.5 padding
-                algorithm=hashes.SHA512()  # Explicitly specify the hash algorithm
+                algorithm=hashes.SHA256()  # Explicitly specify the hash algorithm
             )  
             return True
         except Exception as e:
